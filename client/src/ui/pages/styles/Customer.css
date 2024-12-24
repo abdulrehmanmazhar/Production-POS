@@ -1,0 +1,146 @@
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f9f9f9;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+  }
+  
+  .customer-page {
+    max-width: 95%; /* Set width relative to the viewport */
+    width: 600px; /* Ensure a fixed width for large screens */
+    margin:  auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Top Bar */
+  .top-bar {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 20px;
+  }
+  
+  .top-bar-button {
+    flex: 1;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    text-align: center;
+  }
+  
+  .top-bar-button:not(:last-child) {
+    margin-right: 10px;
+  }
+  
+  .top-bar-button.active {
+    background-color: #0056b3;
+  }
+  
+  .top-bar-button:hover {
+    background-color: #0056b3;
+  }
+  
+  /* Create Customer Form */
+  .create-customer h2 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+  
+  .form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .add-button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    color: white;
+    background-color: #28a745;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .add-button:hover {
+    background-color: #218838;
+  }
+  
+  /* Customer List */
+  .customer-list h2 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .customer-list table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .customer-list th,
+  .customer-list td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .customer-list th {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .customer-list tr:hover {
+    background-color: #f1f1f1;
+  }
+  
+  .edit-button,
+  .delete-button {
+    padding: 5px 10px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .edit-button {
+    background-color: #ffc107;
+    color: white;
+  }
+  
+  .edit-button:hover {
+    background-color: #e0a800;
+  }
+  
+  .delete-button {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .delete-button:hover {
+    background-color: #c82333;
+  }
+  
