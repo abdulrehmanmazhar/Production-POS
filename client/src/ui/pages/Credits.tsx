@@ -117,7 +117,7 @@ const Credits: React.FC = () => {
     }
 
     return (
-      credit.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      (credit.name.toLowerCase().includes(searchQuery.toLowerCase())||credit.contact.includes(searchQuery) ) &&
       (!filterDate || creditDate === filterDate)
     );
   });
@@ -142,7 +142,7 @@ const Credits: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '20px' }}>
         <input
           type="text"
-          placeholder="Search by name"
+          placeholder="Search by name or contact"
           value={searchQuery}
           onChange={handleSearchChange}
           style={{ padding: '10px', flex: '2', border: '1px solid #ddd', borderRadius: '4px' }}

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { HashRouter as Router, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import Product from "./pages/Product";
@@ -8,38 +9,49 @@ import Bills from "./pages/Bills";
 import Sell from "./pages/Sell";
 import Home from "./pages/Home";
 import SignUp from "./pages/SignUp";
-import Login from "./pages/Login";
 import Verification from "./pages/Verification";
 import Customer from "./pages/Customer";
-import ProtectedRoutes from "./utils/ProtectedRoutes";
 import Orders from "./pages/Orders";
 import Community from "./pages/Community";
+import Login from "./pages/Login";
 
 const App = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+  };
+
   return (
     <Router>
-      <Routes>
-        {/* Routes with Navbar */}
-        <Route path="/" element={<Layout />}>
-        <Route element={<ProtectedRoutes/>}>
-          <Route index element={<Home />} />
-          <Route path="product" element={<Product />} />
-          <Route path="stock" element={<Stock />} />
-          <Route path="expense" element={<Expense />} />
-          <Route path="credits" element={<Credits />} />
-          <Route path="bills" element={<Bills />} />
-          <Route path="sell" element={<Sell />} />
-          <Route path="customer" element={<Customer />} />
-          <Route path="orders" element={<Orders />} />
-          <Route path="community" element={<Community />} />
-        </Route>
-        </Route>
+      <div>
+        {/* Display login modal if the user is not authenticated */}
+        {!isAuthenticated && (
+          <div className="login-modal">
+            <Login onLoginSuccess={handleLoginSuccess} />
+          </div>
+        )}
 
-        {/* Routes without Navbar */}
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/verification" element={<Verification />} />
-      </Routes>
+        {/* Main application */}
+        {isAuthenticated && (
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Home />} />
+              <Route path="product" element={<Product />} />
+              <Route path="stock" element={<Stock />} />
+              <Route path="expense" element={<Expense />} />
+              <Route path="credits" element={<Credits />} />
+              <Route path="bills" element={<Bills />} />
+              <Route path="sell" element={<Sell />} />
+              <Route path="customer" element={<Customer />} />
+              <Route path="orders" element={<Orders />} />
+              <Route path="community" element={<Community />} />
+            </Route>
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/verification" element={<Verification />} />
+          </Routes>
+        )}
+      </div>
     </Router>
   );
 };

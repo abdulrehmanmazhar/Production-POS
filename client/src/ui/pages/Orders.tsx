@@ -1,6 +1,11 @@
+// @ts-nocheck
+
 import React, { useEffect, useState } from 'react';
 import axiosInstance from "../utils/axiosInstance";
 import { toast } from "react-toastify";
+import { useNavigate } from 'react-router-dom';
+import html2pdf from "html2pdf.js";
+import { baseURL } from '../utils/axiosInstance';
 
 type Bill = {
   id: number;
@@ -9,18 +14,26 @@ type Bill = {
   contact: string;
   billDate: string;
   billLink: string;
+  customerId: string;
+  createdBy: string;
+  total:number;
 };
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 9;
 
 const Orders = () => {
   const [bills, setBills] = useState<Bill[]>([]);
+  const [orderTakers, setOrderTakers] = useState<[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filter, setFilter] = useState('All');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filterDate, setFilterDate] = useState<string>('');
   const [orders, setOrders] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [showCompleted, setShowCompleted] = useState<boolean>(true);
+  const [showID, setShowID] = useState<boolean>(false);
+
+  const navigate = useNavigate();
   // const [paginatedBills, setPaginatedBills] = useState<any[]>([]);
 
   const fetchOrders = async () => {
@@ -40,30 +53,46 @@ const Orders = () => {
 
   const billCreator = async () => {
     try {
-      const billArray: Bill[] = [];
-      for (let order of orders) {
-        try {
-          const { data } = await axiosInstance.get(`/get-customer/${order.customerId}`);
-          const customerData = data.customer;
-          const bill: Bill = {
-            id: order._id,
-            name: customerData.name,
-            address: customerData.address,
-            contact: customerData.contact,
-            billDate: order.updatedAt,
-            billLink: order.bill,
-          };
-          billArray.push(bill);
-        } catch (error) {
-          console.error(`Error fetching customer data for order ${order.id}:`, error);
-        }
-      }
+      const { data: userData } = await axiosInstance.get(`/get-all-users-admin`);
+      const users = userData.users;
+  
+      const customerDataPromises = orders.map(order =>
+        axiosInstance.get(`/get-customer/${order.customerId}`).catch(() => null)
+      );
+      const customerResponses = await Promise.all(customerDataPromises);
+  
+      const billArray = orders.map((order, index) => {
+        const customerData = customerResponses[index]?.data?.customer;
+        return customerData
+          ? {
+              id: order._id,
+              name: customerData.name,
+              address: customerData.address,
+              contact: customerData.contact,
+              billDate: order.updatedAt,
+              billLink: order.bill,
+              customerId: order.customerId,
+              total:order.total,
+              createdBy: users.find((user: any) => user._id === order.createdBy)?.name || 'Unknown',
+            }
+          : null;
+      }).filter(Boolean); // Filter out nulls
+  
       setBills(billArray);
     } catch (error) {
       console.error("Error creating bills:", error);
       toast.error("Failed to create bills.");
     }
   };
+  useEffect(()=>{
+    const users:any = [];
+    for (let bill of bills){
+      if(!users.includes(bill.createdBy)){
+        users.push(bill.createdBy);
+      }
+    }
+    setOrderTakers(users);
+  },[bills,orders]);
 
   useEffect(() => {
     fetchOrders();
@@ -96,8 +125,8 @@ const Orders = () => {
   const filteredBills = bills.filter((bill) => {
     const billDate = new Date(bill.billDate).toISOString().split('T')[0];
     return (
-      bill.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      (!filterDate || billDate === filterDate)
+      (bill.name.toLowerCase().includes(searchQuery.toLowerCase()) || bill.contact.includes(searchQuery)) &&
+      (!filterDate || billDate === filterDate) && (filter === 'All' || bill.createdBy === filter)
     );
   });
 
@@ -122,7 +151,9 @@ const Orders = () => {
   const handleCheckboxChange = () => {
     setShowCompleted((prevShowCompleted) => !prevShowCompleted);
     console.log(paginatedBills);
-    console.log(filteredBills)
+  };
+  const handleIDChange = () => {
+    setShowID((prevShowID) => !prevShowID);
   };
   const handleDeleteOrder = async (id: any) => {
     try {
@@ -135,6 +166,138 @@ const Orders = () => {
     }
   };
 
+//   const handleGenOrder = async (orderId:any,customerId:any) => {
+//     if (!orderId) {
+//       return console.warn("No order found");
+//     }
+//     try {
+//       await axiosInstance.post(`/add-order/${orderId}`, {
+//         billPayment: 0,
+//         customerId,
+//       });
+//       toast.success("Order done successfully with zero payment.");
+//     } catch (error) {
+//       toast.error("Failed to place order.");
+//       console.error(error);
+//   }
+// }
+const handleOpenOrder = (customerId: string, orderId: any) => {
+  navigate(`/sell`, { state: { customerId, stateOrderId:orderId } }); // Navigate with state
+};
+const billDownloader = async () => {
+  if (!bills || bills.length === 0) {
+    toast.error("No bills available for download.");
+    return;
+  }
+
+  for (const bill of filteredBills) {
+    if (bill.billLink) {
+      try {
+        const response = await fetch(`${baseURL}/bills/${bill.billLink}`);
+        if (!response.ok) {
+          console.error(`Failed to fetch bill for ${bill.name}: ${response.statusText}`);
+          continue;
+        }
+
+        const blob = await response.blob(); // Get the file as a Blob
+        const url = URL.createObjectURL(blob); // Create a temporary URL for the Blob
+
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `${bill.name.replace(/\s+/g, '_')}_${bill.address}_bill.pdf`; // Example: John_Doe_bill_123.pdf
+        document.body.appendChild(anchor); // Append to the DOM temporarily
+        anchor.click(); // Trigger the download
+        document.body.removeChild(anchor); // Remove the anchor
+        URL.revokeObjectURL(url); // Clean up the Blob URL
+      } catch (error) {
+        console.error(`Error downloading bill for ${bill.name}:`, error);
+      }
+    } else {
+      console.warn(`Bill for ${bill.name} does not have a valid link.`);
+    }
+  }
+
+  toast.success("All bills have been downloaded.");
+};
+
+
+
+const handleReportGenerator = ()=>{
+  const users:any = [];
+  for (let bill of bills){
+    if(!users.includes(bill.createdBy)){
+      users.push(bill.createdBy);
+    }
+  }
+  let userObj:any={};
+  for(let user of users){
+    userObj[user] = filteredBills.filter((bill)=>bill.createdBy === user )
+    
+  }
+  // console.log(userObj);
+  const reportHTML = `
+  <div style="font-family: Arial, sans-serif; padding: 20px;">
+    <h1 style="font-size: 24px; text-align: center; color: #333;">Orders Report</h1>
+    <h3 style="font-size: 18px; margin-bottom: 20px; color: #555;">Total Orders: ${filteredBills.length}</h3>
+    <table border="1" cellspacing="0" cellpadding="10" style="width: 100%; border-collapse: collapse; text-align: left;">
+      <thead>
+        <tr style="background-color: #f2f2f2; color: #333;">
+          <th style="width: 5%;">#</th>
+          <th style="width: 30%;">Name</th>
+          <th style="width: 40%;">Address</th>
+          <th style="width: 25%;">Value</th>
+          <th style="width: 25%;">Bill Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${Object.entries(userObj)
+          .map(
+            ([user, bills], userIndex) => `
+            <tr>
+              <td colspan="4" style="font-weight: bold; background-color: #d9edf7; color: #31708f; text-align: left;">
+                ${userIndex + 1}. Created by: ${user}
+              </td>
+            </tr>
+            ${bills
+              .map(
+                (bill, billIndex) => `
+                <tr>
+                  <td style="text-align: center;">${billIndex + 1}</td>
+                  <td>${bill.name}</td>
+                  <td>${bill.address}</td>
+                  <td>${bill.total}</td>
+                  <td>${new Date(bill.billDate).toLocaleDateString()}</td>
+                </tr>
+                `
+              )
+              .join("")}
+          `
+          )
+          .join("")}
+      </tbody>
+    </table>
+  </div>
+`;
+
+    const options = {
+          margin: 0.25,
+          filename: `orders_report.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+        };
+      
+        html2pdf()
+          .from(reportHTML)
+          .set(options)
+          .save()
+          .catch((error: any) => {
+            console.error("Error generating PDF:", error);
+            toast.error("Failed to generate PDF.");
+          });
+}
+
+
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
       <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Orders</h2>
@@ -142,7 +305,7 @@ const Orders = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '20px' }}>
         <input
           type="text"
-          placeholder="Search by name"
+          placeholder="Search by name or contact"
           value={searchQuery}
           onChange={handleSearchChange}
           style={{ padding: '10px', flex: '2', border: '1px solid #ddd', borderRadius: '4px' }}
@@ -169,7 +332,7 @@ const Orders = () => {
       </div>
 
       <div style={{ marginBottom: '20px' }}>
-        <label>
+        <label style={{ marginRight: '50px' }}>
           <input
             type="checkbox"
             checked={showCompleted}
@@ -178,17 +341,36 @@ const Orders = () => {
           />
           Completed Orders
         </label>
+        <label style={{ marginRight: '50px' }}>
+          <input
+            type="checkbox"
+            checked={showID}
+            onChange={handleIDChange}
+            style={{ marginRight: '10px' }}
+          />
+          Show ID
+        </label>
+        <label >Order-Takers:</label>
+  <select
+    value={filter}
+    onChange={(e) => setFilter(e.target.value)}
+  >
+    {orderTakers.map((person)=>(<option value={person}>{person}</option>))}
+    <option value={'All'}>All</option>
+  </select>
+        
       </div>
 
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
             <th>#</th>
-            <th>ID</th>
+            {showID&&<th>ID</th>}
             <th>Name</th>
             <th>Address</th>
             <th>Contact</th>
-            <th>Date</th>
+            <th>Created By</th>
+            <th>Date, Time</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -196,17 +378,18 @@ const Orders = () => {
           {paginatedBills.map((bill, index) => (
             <tr key={bill.id} style={{ borderBottom: '1px solid #ddd' }}>
               <td>{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</td>
-              <td>{`"${bill.id}"`}</td>
+              {showID && <td>{`"${bill.id}"`}</td>}
               <td>{bill.name}</td>
               <td>{bill.address}</td>
               <td>{bill.contact}</td>
-              <td>{new Date(bill.billDate).toLocaleDateString()}</td>
+              <td>{bill.createdBy}</td>
+              <td>{new Date(bill.billDate).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}</td>
               <td>
                 {/* <a href={`${baseURL}/bills/${bill.billLink}`} target="_blank" rel="noopener noreferrer">
                   View Bill
                 </a> */}
-                <button className='edit-button'>Edit</button>
                 <button className='delete-button' onClick={()=>handleDeleteOrder(bill.id)}>Delete</button>
+                {!bill.billLink && <button className='gen-button' onClick={() => handleOpenOrder(bill.customerId, bill.id)}>Open</button>}
               </td>
             </tr>
           ))}
@@ -246,6 +429,12 @@ const Orders = () => {
           Next
         </button>
       </div>
+      <button onClick={handleReportGenerator} className="download-button gen-button">
+     Download Orders Report
+   </button>
+   <button onClick={billDownloader} className="download-button gen-button">
+     Download Bills
+   </button>
     </div>
   );
 };

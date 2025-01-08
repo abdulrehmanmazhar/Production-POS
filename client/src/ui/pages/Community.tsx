@@ -3,159 +3,159 @@ import "./styles/Customer.css";
 import axiosInstance from "../utils/axiosInstance";
 import { toast } from "react-toastify";
 
-interface ICustomer {
+interface IUser {
   _id?: string;
   name: string;
-  address: string;
-  contact: string;
-  orders?: string[];
-  udhar?: number;
+  email: string;
+  password: string;
+  role?: string;
 }
 
 const Community = () => {
   const [view, setView] = useState<"add" | "list">("add");
-  const [customers, setCustomers] = useState<ICustomer[]>([]);
-  const [newCustomer, setNewCustomer] = useState<ICustomer>({ name: "", contact: "", address: "" });
+  const [users, setUsers] = useState<IUser[]>([]);
+  const [newUser, setNewUser] = useState<IUser>({ name: "", email: "", password: "" });
 
   useEffect(() => {
-    if (view === "list") fetchCustomers();
+    if (view === "list") fetchUsers();
   }, [view]);
 
-  const fetchCustomers = async () => {
+  const fetchUsers = async () => {
     try {
-      const { data } = await axiosInstance.get("/get-customers");
-      setCustomers(data.customers);
+      const { data } = await axiosInstance.get("/get-all-users-admin");
+      const filteredUser = data.users.filter((user:any)=>user.role !=="admin")
+      setUsers(filteredUser);
     } catch (error) {
-      console.error("Error fetching customers:", error);
-      toast.error("Failed to fetch customers.");
+      console.error("Error fetching users:", error);
+      toast.error("Failed to fetch users.");
     }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setNewCustomer((prev) => ({ ...prev, [name]: value }));
+    setNewUser((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleAddOrEditCustomer = async () => {
-    if (!newCustomer.name || !newCustomer.contact || !newCustomer.address) {
+  const handleAddOrEditUser = async () => {
+    if (!newUser.name || !newUser.email || !newUser.password) {
       toast.error("Please fill in all fields.");
       return;
     }
 
     try {
-      if (newCustomer._id) {
-        await axiosInstance.put(`/edit-customer/${newCustomer._id}`, newCustomer);
-        toast.success("Customer updated successfully.");
+      if (newUser._id) {
+        await axiosInstance.put(`/update-user-info/${newUser._id}`, newUser);
+        toast.success("User updated successfully.");
       } else {
-        await axiosInstance.post("/add-customer", newCustomer);
-        toast.success("Customer added successfully.");
+        await axiosInstance.post("/add-user-admin", newUser);
+        toast.success("User added successfully.");
       }
-      setNewCustomer({ name: "", contact: "", address: "" });
+      setNewUser({ name: "", email: "", password: "" });
       setView("list");
     } catch (error: any) {
-      console.error("Error saving customer:", error);
-      toast.error(error.response?.data?.message || "Failed to save customer.");
+      console.error("Error saving user:", error);
+      toast.error(error.response?.data?.message || "Failed to save user.");
     }
   };
 
-  const handleDeleteCustomer = async (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     try {
-      await axiosInstance.delete(`/delete-customer/${id}`);
-      toast.success("Customer deleted successfully.");
-      fetchCustomers();
+      await axiosInstance.delete(`/delete-user/${id}`);
+      toast.success("User deleted successfully.");
+      fetchUsers();
     } catch (error: any) {
-      console.error("Error deleting customer:", error);
-      toast.error(error.response?.data?.message || "Failed to delete customer.");
+      console.error("Error deleting user:", error);
+      toast.error(error.response?.data?.message || "Failed to delete user.");
     }
   };
 
-  const handleEditCustomer = (id: string) => {
-    const customerToEdit = customers.find((customer) => customer._id === id);
-    if (customerToEdit) {
-      setNewCustomer(customerToEdit);
+  const handleEditUser = (id: string) => {
+    const userToEdit = users.find((user) => user._id === id);
+    if (userToEdit) {
+      setNewUser(userToEdit);
       setView("add");
     }
   };
 
   return (
-    <div className="customer-page">
+    <div className="user-page">
       {/* Top bar */}
       <div className="top-bar">
         <button
           className={`top-bar-button ${view === "add" ? "active" : ""}`}
           onClick={() => setView("add")}
         >
-          Add Customer
+          Add New User
         </button>
         <button
           className={`top-bar-button ${view === "list" ? "active" : ""}`}
           onClick={() => setView("list")}
         >
-          Customer List
+          User List
         </button>
       </div>
 
       {/* Dynamic content */}
       {view === "add" ? (
-        <div className="create-customer">
-          <h2>{newCustomer._id ? "Edit Customer" : "Create New Customer"}</h2>
+        <div className="create-user">
+          <h2>{newUser._id ? "Edit User" : "Create New User"}</h2>
           <div className="form-group">
             <label>Name</label>
             <input
               type="text"
               name="name"
-              value={newCustomer.name}
+              value={newUser.name}
               onChange={handleInputChange}
-              placeholder="Enter customer's name"
+              placeholder="Enter username"
             />
           </div>
           <div className="form-group">
-            <label>Contact</label>
+            <label>Email</label>
             <input
-              type="text"
-              name="contact"
-              value={newCustomer.contact}
+              type="email"
+              name="email"
+              value={newUser.email}
               onChange={handleInputChange}
-              placeholder="Enter customer's contact"
+              placeholder="Enter email"
             />
           </div>
           <div className="form-group">
-            <label>Address</label>
+            <label>Password</label>
             <input
-              type="text"
-              name="address"
-              value={newCustomer.address}
+              type="password"
+              name="password"
+              value={newUser.password}
               onChange={handleInputChange}
-              placeholder="Enter customer's address"
+              placeholder="Enter password"
             />
           </div>
-          <button className="add-button" onClick={handleAddOrEditCustomer}>
-            {newCustomer._id ? "Update Customer" : "Add Customer"}
+          <button className="add-button" onClick={handleAddOrEditUser}>
+            {newUser._id ? "Update User" : "Add User"}
           </button>
         </div>
       ) : (
-        <div className="customer-list">
-          <h2>Customer List</h2>
+        <div className="user-list">
+          <h2>User List</h2>
           <table>
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Contact</th>
-                <th>Address</th>
+                <th>Email</th>
+                <th>Role</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {customers.map((customer) => (
-                <tr key={customer._id}>
-                  <td>{customer.name}</td>
-                  <td>{customer.contact}</td>
-                  <td>{customer.address}</td>
+              {users.map((user) => (
+                <tr key={user._id}>
+                  <td>{user.name}</td>
+                  <td>{user.email}</td>
+                  <td>{user.role}</td>
                   <td>
-                    <button className="edit-button" onClick={() => handleEditCustomer(customer._id!)}>
+                    <button className="edit-button" onClick={() => handleEditUser(user._id!)} >
                       Edit
                     </button>
-                    <button className="delete-button" onClick={() => handleDeleteCustomer(customer._id!)}>
+                    <button className="delete-button" onClick={() => handleDeleteUser(user._id!)} >
                       Delete
                     </button>
                   </td>

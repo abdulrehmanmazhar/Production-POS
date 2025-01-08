@@ -3,19 +3,19 @@ import axiosInstance from "../utils/axiosInstance";
 import { toast } from "react-toastify";
 import { baseURL } from '../utils/axiosInstance';
 
-type Bill = {
-  id: number;
-  name: string;
-  address: string;
-  contact: string;
-  billDate: string;
-  billLink: string;
-};
+// type Bill = {
+//   id: number;
+//   name: string;
+//   address: string;
+//   contact: string;
+//   billDate: string;
+//   billLink: string;
+// };
 
 const ITEMS_PER_PAGE = 15;
 
 const Bills = () => {
-  const [bills, setBills] = useState<Bill[]>([]);
+  const [bills, setBills] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filterDate, setFilterDate] = useState<string>('');
@@ -35,12 +35,12 @@ const Bills = () => {
 
   const billCreator = async () => {
     try {
-      const billArray: Bill[] = [];
-      for (let order of orders) {
+      const fetchCustomerData = orders.map(async (order) => {
         try {
           const { data } = await axiosInstance.get(`/get-customer/${order.customerId}`);
           const customerData = data.customer;
-          const bill: Bill = {
+  
+          return {
             id: order.id,
             name: customerData.name,
             address: customerData.address,
@@ -48,17 +48,20 @@ const Bills = () => {
             billDate: order.updatedAt,
             billLink: order.bill,
           };
-          billArray.push(bill);
         } catch (error) {
           console.error(`Error fetching customer data for order ${order.id}:`, error);
+          return null; // Handle error gracefully for individual orders
         }
-      }
+      });
+  
+      const billArray = (await Promise.all(fetchCustomerData)).filter(Boolean); // Filter out any failed requests
       setBills(billArray);
     } catch (error) {
       console.error("Error creating bills:", error);
       toast.error("Failed to create bills.");
     }
   };
+  
 
   useEffect(() => {
     fetchOrders();
@@ -91,7 +94,7 @@ const Bills = () => {
   const filteredBills = bills.filter((bill) => {
     const billDate = new Date(bill.billDate).toISOString().split('T')[0];
     return (
-      bill.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      (bill.name.toLowerCase().includes(searchQuery.toLowerCase()) || bill.contact.includes(searchQuery)) &&
       (!filterDate || billDate === filterDate)
     );
   });
@@ -121,7 +124,7 @@ const Bills = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '20px' }}>
         <input
           type="text"
-          placeholder="Search by name"
+          placeholder="Search by name or contact"
           value={searchQuery}
           onChange={handleSearchChange}
           style={{ padding: '10px', flex: '2', border: '1px solid #ddd', borderRadius: '4px' }}

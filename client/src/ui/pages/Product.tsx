@@ -283,7 +283,7 @@ const Product: React.FC = () => {
       </option>
       {products.map((product) => (
         <option key={product._id} value={product.name}>
-          {product.name}
+          {`${product.name} (${product.category})`}
         </option>
       ))}
     </select>

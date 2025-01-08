@@ -1,9 +1,10 @@
 // @ts-nocheck
 
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { toast } from "react-toastify";
-
+import { baseURL } from '../utils/axiosInstance';
 type Product = {
   _id: string;
   name: string;
@@ -35,8 +36,52 @@ const Sell = () => {
   const [orderId, setOrderId] = useState();
 
   const [payment, setPayment] = useState<number>(0);
+  const [additionalDiscount, setAdditionalDiscount] = useState<number>(0);
 
   const [loading, setLoading] = useState<boolean>(false);
+
+  const location = useLocation();
+  const { customerId, stateOrderId } = location.state || {};
+
+  const [customer, setCustomer] = useState(null);
+  const [order, setOrder] = useState(null);
+
+  const [instructionNote, setInstructionNote] = useState<string>('');
+
+  useEffect(() => {
+    if (!customerId || !stateOrderId) {
+      // toast.error("Invalid navigation state. Missing customer or order ID.");
+      return;
+    }
+
+    // Fetch customer data
+    const fetchCustomer = async () => {
+      try {
+        const { data } = await axiosInstance.get(`/get-customer/${customerId}`);
+        setCustomer(data.customer);
+        setSelectedCustomer(data.customer._id)
+      } catch (error) {
+        console.error("Error fetching customer:", error);
+        toast.error("Failed to fetch customer data.");
+      }
+    };
+
+    // Fetch order data
+    const fetchOrder = async () => {
+      try {
+        const { data } = await axiosInstance.get(`/get-order/${stateOrderId}`);
+        setOrder(data.order);
+        // syncCart({_id:data.order._id})
+        setOrderId(data.order._id)
+      } catch (error) {
+        console.error("Error fetching order:", error);
+        toast.error("Failed to fetch order data.");
+      }
+    };
+
+    fetchCustomer();
+    fetchOrder();
+  }, [customerId, stateOrderId]);
 
   useEffect(()=>{fetchCustomers(); fetchProducts()},[])
 
@@ -52,6 +97,7 @@ const Sell = () => {
     syncCart({_id:orderId})
     setUpdation("")
   }},[updation])
+  useEffect(()=>{syncCart({_id:orderId})},[orderId]);
 
   const fetchCustomers = async () => {
     try {
@@ -135,30 +181,54 @@ const Sell = () => {
 
   const addOrderHandler = async () => {
     if (!orderId) {
-      return console.warn("No order found");
+      console.warn("No order found");
+      return;
     }
+    const id = orderId;
+  
     setLoading(true);
     try {
-      await axiosInstance.post(`/add-order/${orderId}`, {
+      // Send request to add the order
+      const { data } = await axiosInstance.post(`/add-order/${orderId}`, {
         billPayment: payment,
         customerId: selectedCustomer,
+        instructionNote, // Include the instruction note
       });
-      toast.success("Order done successfully.");
-
-      // Reset all states to default
+      
+      toast.success("Order placed successfully.");
+      
+      // Fetch the order details to get the generated bill link
+      // const response = await axiosInstance.get(`/get-order/${orderId}`);
+      const response = await axiosInstance.get(`/get-order/${orderId}`);
+      const generatedBill = response.data.order?.bill;
+      console.log(response)
+  
+      if (generatedBill) {
+        // Open the bill link in a new tab
+        const billUrl = `${baseURL}/bills/${generatedBill}`;
+        window.open(billUrl, "_blank");
+      } else {
+        // console.log(generatedBill);
+        console.error("Bill link not found.");
+      }
+  
+      // Reset all states
       setSelectedCustomer('');
       setCurrentProduct(null);
       setQuantity(1);
       setAddedItems([]);
-      setOrderId(undefined);
       setPayment(0);
+      setInstructionNote('');
+      setOrderId(undefined);
     } catch (error) {
       toast.error("Failed to place order.");
-      console.error(error);
+      console.error("Error:", error);
     } finally {
       setLoading(false);
     }
   };
+  
+  
 
   const totalBill = addedItems.reduce((sum, item) => sum + item.product.price*item.qty, 0);
   const totalDiscount = addedItems.reduce((sum, item) => sum + item.product.discount*item.qty, 0);
@@ -206,7 +276,7 @@ const Sell = () => {
           <option value="">Select Product</option>
           {products.map((product) => (
             <option key={product._id} value={product._id}>
-              {product.name}
+              {`${product.name}   (${product.category})`}
             </option>
           ))}
         </select>
@@ -237,6 +307,22 @@ const Sell = () => {
           Add
         </button>
       </div>
+      <div
+    style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      padding: '10px',
+      backgroundColor: '#f8f9fa',
+      borderBottom: '2px solid #ddd',
+      fontWeight: 'bold',
+    }}
+  >
+    <span style={{ flex: 3 }}>Product Name</span>
+    <span style={{ flex: 1 }}>Quantity</span>
+    <span style={{ flex: 1 }}>Price</span>
+    <span style={{ flex: 1 }}>Subtotal</span>
+    <span style={{ flex: 1 }}>Actions</span>
+  </div>
 
       {/* Added Items */}
       <ul style={{ listStyle: 'none', padding: 0, marginBottom: '20px' }}>
@@ -253,7 +339,7 @@ const Sell = () => {
             }}
           >
             <input type='text' readOnly
-              value={item.product.name}
+              value={`${item.product.name}(${item.product.category})`}
               // onChange={(e) =>
               //   setAddedItems((prevItems) =>
               //     prevItems.map((it, i) =>
@@ -317,13 +403,27 @@ const Sell = () => {
             borderRadius: '4px',
           }}
         />
+        +
+        <input
+          type="number"
+          value={additionalDiscount}
+          onChange={(e)=>{setAdditionalDiscount(Number(e.target.value))}}
+          placeholder="Enter payment"
+          style={{
+            width: '25%',
+            height:"20px",
+            padding: '5px',
+            border: '1px solid #ddd',
+            borderRadius: '4px',
+          }}
+        />
         <h3>PKR</h3>
         </div>
         <div style={{display: "flex", alignItems: "center", gap:"1rem"}}>
         <h3>Sub Total: </h3>
         <input
           type="number"
-          value={totalBill-totalDiscount}
+          value={totalBill-(totalDiscount+additionalDiscount)}
           readOnly
           placeholder="Enter payment"
           style={{
@@ -353,6 +453,23 @@ const Sell = () => {
         />
         <h3>PKR</h3>
         </div>
+        {/* Instruction Note Section */}
+<div style={{ marginBottom: '20px' }}>
+  <h3>Instruction Note:</h3>
+  <input
+    type="text"
+    value={instructionNote}
+    onChange={(e) => setInstructionNote(e.target.value)}
+    placeholder="Add any instructions (e.g., delivery notes)"
+    style={{
+      width: '100%',
+      padding: '10px',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+    }}
+  />
+</div>
+
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
             style={{

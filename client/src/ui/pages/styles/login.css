@@ -1,0 +1,129 @@
+/* General Styles for Body */
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f9;
+    color: #333;
+  }
+  
+  /* Centered Modal Container */
+  .modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+  }
+  
+  /* Modal Content */
+  .modal-content {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.2);
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  /* Modal Animation */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  /* Heading */
+  .modal-content h2 {
+    margin: 0 0 20px;
+    font-size: 24px;
+    text-align: center;
+    color: #2c3e50;
+  }
+  
+  /* Form Styles */
+  .modal-content form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  /* Input Fields */
+  .modal-content input[type="email"],
+  .modal-content input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #333;
+    transition: all 0.3s ease-in-out;
+  }
+  
+  .modal-content input:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+    outline: none;
+  }
+  
+  /* Labels */
+  .modal-content label {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #555;
+  }
+  
+  /* Button Styles */
+  .modal-content button {
+    background-color: #3498db;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background-color 0.3s ease-in-out;
+  }
+  
+  .modal-content button:hover {
+    background-color: #2980b9;
+  }
+  
+  /* Error Message */
+  .modal-content p {
+    margin: 0;
+    font-size: 14px;
+    color: red;
+    text-align: center;
+  }
+  
+  /* Footer or Additional Links */
+  .modal-content .footer {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 14px;
+  }
+  
+  .modal-content .footer a {
+    color: #3498db;
+    text-decoration: none;
+    font-weight: bold;
+  }
+  
+  .modal-content .footer a:hover {
+    text-decoration: underline;
+  }
+  

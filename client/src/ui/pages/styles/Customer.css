@@ -115,7 +115,7 @@ body {
   .customer-list tr:hover {
     background-color: #f1f1f1;
   }
-  
+  .gen-button,
   .edit-button,
   .delete-button {
     padding: 5px 10px;
@@ -133,6 +133,14 @@ body {
   
   .edit-button:hover {
     background-color: #e0a800;
+  }
+  .gen-button{
+    background-color: #357ddc;
+    color: white;
+  }
+  .gen-button:hover{
+    background-color: #076df1;
+    color: white;
   }
   
   .delete-button {

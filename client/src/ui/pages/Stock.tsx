@@ -8,26 +8,81 @@ interface Product {
   category: string;
   price: number;
   purchasePrice: number;
+  discount: number;
   stockQty: number;
+  sold: number;
+  total: number;
 }
 
 const Stock: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [viewInStock, setViewInStock] = useState<boolean>(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  
+  const [filter, setFilter] = useState<string>("today");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  // useEffect(() => {
+  //   productSync();
+  // }, []);
   useEffect(() => {
-    productSync();
-  }, []);
+    const today = new Date();
+    let filters: any = { dateRange: "" };
 
-  const productSync = async () => {
+    if (filter === "today") {
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
+      const endOfDay = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+      filters = { dateRange: "today", startDate: startOfDay, endDate: endOfDay };
+    } else if (filter === "thisMonth") {
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
+      const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
+      filters = { dateRange: "thisMonth", startDate: startOfMonth, endDate: endOfMonth };
+    } else if (filter === "thisYear") {
+      const startOfYear = new Date(today.getFullYear(), 0, 1).toISOString();
+      const endOfYear = new Date(today.getFullYear(), 11, 31, 23, 59, 59, 999).toISOString();
+      filters = { dateRange: "thisYear", startDate: startOfYear, endDate: endOfYear };
+    } else if (filter === "custom") {
+      if (!startDate || !endDate) {
+        toast.error("Please select both start and end dates.");
+        return;
+      }
+      filters = { dateRange: "custom", startDate, endDate };
+    }
+
+    productSync(filters);
+  }, [filter, startDate, endDate]);
+  
+
+  const productSync = async (filters?:any) => {
     try {
       const response = await axiosInstance.get('/get-products');
-      setProducts(response.data.products);
+      const products = response.data.products;
+      // console.log(products)
+      // setProducts(products);
+      const neoProduct =[];
+      for (let product of products){
+      const response = await axiosInstance.post('/get-product-sales',{productId:product._id, ...filters});
+      console.log(`for ${product.name}(${product.category})  ${response.data.productSales}`)
+      const productLet = {
+        _id: product._id,
+        name: product.name,
+        category: product.category,
+        price: product.price,
+        purchasePrice: product.purchasePrice,
+        discount: product.discount,
+        stockQty: product.stockQty,
+        sold: response.data.productSales.reduce((sum:number, productSale:any) => sum + productSale?.sold, 0),
+        total: (Number(response.data.productSales[0]?.sold) || 0) + 
+        (Number(response.data.productSales[0]?.stockQtyLeft)|| 0)
+      }
+      neoProduct.push(productLet)
+      }
+
+      setProducts(neoProduct);
+      console.log(neoProduct)
     } catch (error) {
       console.error('Error fetching products:', error);
       toast.error('Failed to fetch products.');
@@ -67,7 +122,7 @@ const Stock: React.FC = () => {
   };
 
   const filteredProducts = products.filter(product =>
-    viewInStock ? product.stockQty > 0 : product.stockQty === 0
+    viewInStock ? product.stockQty > 0 : product.stockQty <= 0
   );
 
   // Pagination logic
@@ -122,6 +177,34 @@ const Stock: React.FC = () => {
             Out of Stock Products
           </button>
         </div>
+        {/* filters */}
+        <div>
+
+  <label>Filter by:</label>
+  <select
+    value={filter}
+    onChange={(e) => setFilter(e.target.value)}
+  >
+    <option value="today">Today</option>
+    <option value="thisMonth">This Month</option>
+    <option value="thisYear">This Year</option>
+    <option value="custom">Custom</option>
+  </select>
+</div>
+{filter === "custom" && (
+  <div>
+    <input
+      type="date"
+      value={startDate}
+      onChange={(e) => setStartDate(e.target.value)}
+    />
+    <input
+      type="date"
+      value={endDate}
+      onChange={(e) => setEndDate(e.target.value)}
+    />
+  </div>
+)}
 
         {/* Product List */}
         <div style={{ width: '100%' }}>
@@ -129,19 +212,25 @@ const Stock: React.FC = () => {
             <thead>
               <tr style={{ borderBottom: '2px solid #ddd', textAlign: 'left' }}>
                 <th style={{ padding: '10px' }}>Product Name</th>
-                <th style={{ padding: '10px' }}>Category</th>
-                <th style={{ padding: '10px' }}>Price</th>
-                <th style={{ padding: '10px' }}>Remaining Quantity</th>
+                <th style={{ padding: '10px' }}>Discount</th>
+                <th style={{ padding: '10px' }}>S. Price</th>
+                <th style={{ padding: '10px' }}>P. Price</th>
+                <th style={{ padding: '10px' }}>Left</th>
+                <th style={{ padding: '10px' }}>Sold</th>
+                <th style={{ padding: '10px' }}>Total</th>
                 <th style={{ padding: '10px' }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {currentProducts.map(product => (
                 <tr key={product._id} style={{ borderBottom: '1px solid #ddd' }}>
-                  <td style={{ padding: '10px' }}>{product.name}</td>
-                  <td style={{ padding: '10px' }}>{product.category}</td>
+                  <td style={{ padding: '10px' }}>{`${product.name} (${product.category})`}</td>
+                  <td style={{ padding: '10px' }}>{product.discount}</td>
                   <td style={{ padding: '10px' }}>{product.price}</td>
+                  <td style={{ padding: '10px' }}>{product.purchasePrice}</td>
                   <td style={{ padding: '10px' }}>{product.stockQty}</td>
+                  <td style={{ padding: '10px' }}>{`${product.sold} units`}</td>
+                  <td style={{ padding: '10px' }}>{`${product.total}`}</td>
                   <td style={{ padding: '10px' }}>
                     <button
                       style={{
